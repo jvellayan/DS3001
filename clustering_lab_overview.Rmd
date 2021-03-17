@@ -1,0 +1,222 @@
+---
+title: "Clustering Lab"
+author: "Brian Wright"
+date: "9/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Repeat the clustering process only using the Rep house votes dataset
+- What differences and similarities did you see between how the clustering worked for the Rep House dataset?
+For both the Dem and Rep datasets, I found that 2 clusters was the best number of clusters to represent the data. I followed the exact same process for the Rep dataset that was previously followed for Dem dataset. Overall, I would say the outputs are more similar than they are different. Republicans were more likely to vote yes on their bills and Democrats were more likely to vote no and vice versa. Additionally, in both datasets there were a few outliers present of politicans that did not vote in favor of their party's bill or did vote in favor of the other party's bill. Even the distributions of the two clusters are very similar between both datasets. The main difference is in this dataset there are two Democrats that are decently close to the center of the more Republican cluster, whereas the outliers in the other dataset were on outside of the cluster.
+```{r}
+library(e1071)
+library(tidyverse)
+library(plotly)
+```
+
+```{r}
+#Select the variables to be included in the cluster 
+house_votes_Rep = read_csv("house_votes_Rep.csv")
+
+clust_data_Rep = house_votes_Rep[, c("aye", "nay", "other")]
+View(clust_data_Rep)
+```
+
+```{r}
+#Run the clustering algo with 2 centers
+set.seed(1)
+kmeans_obj_Rep = kmeans(clust_data_Rep, centers = 2, 
+                        algorithm = "Lloyd") 
+```
+
+```{r}
+#View the results
+kmeans_obj_Rep
+```
+```{r}
+party_clusters_Rep = as.factor(kmeans_obj_Rep$cluster)
+View(party_clusters_Rep)
+View(as.data.frame(party_clusters_Rep))
+```
+
+
+```{r}
+party_labels_Rep = house_votes_Rep$party.labels
+View(party_labels_Rep)
+```
+
+```{r}
+#Visualize the output
+ggplot(house_votes_Rep, aes(x = aye, 
+                            y = nay,
+                            shape = party_clusters_Rep)) + 
+  geom_point(size = 6) +
+  ggtitle("Aye vs. Nay votes for Republican-introduced bills") +
+  xlab("Number of Aye Votes") +
+  ylab("Number of Nay Votes") +
+  scale_shape_manual(name = "Cluster", 
+                     labels = c("Cluster 1", "Cluster 2"),
+                     values = c("1", "2")) +
+  theme_light()
+```
+```{r}
+ggplot(house_votes_Rep, aes(x = aye, 
+                            y = nay,
+                            color = party_labels_Rep,  #<- tell R how to color 
+                            #   the data points
+                            shape = party_clusters_Rep)) + 
+  geom_point(size = 6) +
+  ggtitle("Aye vs. Nay votes for Republican-introduced bills") +
+  xlab("Number of Aye Votes") +
+  ylab("Number of Nay Votes") +
+  scale_shape_manual(name = "Cluster", 
+                     labels = c("Cluster 1", "Cluster 2"),
+                     values = c("1", "2")) +
+  scale_color_manual(name = "Party",         #<- tell R which colors to use and
+                     #   which labels to include in the legend
+                     labels = c("Republican", "Democratic"),
+                     values = c("red", "blue")) +
+  theme_light()
+
+```
+
+```{r}
+#Optional (Create a 3d version of the output)
+party_color3D_Rep = data.frame(party.labels = c("Democrat", "Republican"),
+                               color = c("blue", "red"))
+house_votes_color_Rep = inner_join(house_votes_Rep, party_color3D_Rep)
+
+```
+
+```{r}
+#Evaluate the quality of the clustering 
+num_Rep = kmeans_obj_Rep$betweenss
+denom_Rep = kmeans_obj_Rep$totss
+
+# Variance accounted for by clusters.
+(var_exp_Rep = num_Rep / denom_Rep)
+```
+
+```{r}
+#Use the function we created to evaluate several different number of clusters
+explained_variance = function(data_in, k){
+  
+  # Running the kmeans algorithm.
+  set.seed(1)
+  kmeans_obj = kmeans(data_in, centers = k, algorithm = "Lloyd", iter.max = 30)
+  
+  # Variance accounted for by clusters:
+  # var_exp = intercluster variance / total variance
+  var_exp = kmeans_obj$betweenss / kmeans_obj$totss
+  var_exp  
+}
+```
+
+```{r}
+clust_data_Rep = house_votes_Rep[, c("aye", "nay", "other")]
+explained_var_Rep = sapply(1:10, explained_variance, data_in = clust_data_Rep)
+```
+
+```{r}
+#Create a elbow chart of the output 
+elbow_data_Rep = data.frame(k = 1:10, explained_var_Rep)
+View(elbow_data_Rep)
+```
+
+```{r}
+#Use NbClust to select a number of clusters
+library(NbClust)
+
+# Run NbClust.
+nbclust_obj_Rep = NbClust(data = clust_data_Rep, method = "kmeans")
+
+# View the output of NbClust.
+nbclust_obj_Dem
+
+freq_k_Rep = nbclust_obj_Rep$Best.nc[1,]
+freq_k_Rep = data.frame(freq_k_Rep)
+View(freq_k_Rep)
+```
+
+```{r}
+View(nbclust_obj_Rep$Best.nc)
+max(freq_k_Rep)
+```
+
+```{r}
+#Display the results visually 
+#clustering again
+nbkmeans_obj_Rep = kmeans(clust_data_Rep, centers = 2, 
+                        algorithm = "Lloyd") 
+```
+
+```{r}
+party_clusters_Rep1 = as.factor(nbkmeans_obj_Rep$cluster)
+
+# What does the kmeans_obj look like?
+#View(party_clusters_Dem1)
+#View(as.data.frame(party_clusters_Dem1))
+# Set up labels for our data so that we can compare Democrats and Republicans.
+party_labels_Rep = house_votes_Rep$party.labels
+#View(party_labels_Dem)
+
+ggplot(house_votes_Rep, aes(x = aye, 
+                            y = nay,
+                            color = party_labels_Rep,  #<- tell R how to color 
+                            #   the data points
+                            shape = party_clusters_Rep)) + 
+  geom_point(size = 6) +
+  ggtitle("Aye vs. Nay votes for Republican-introduced bills") +
+  xlab("Number of Aye Votes") +
+  ylab("Number of Nay Votes") +
+  scale_shape_manual(name = "Cluster", 
+                     labels = c("Cluster 1", "Cluster 2"),
+                     values = c("1", "2")) +
+  scale_color_manual(name = "Party",         #<- tell R which colors to use and
+                     #   which labels to include in the legend
+                     labels = c("Republican", "Democratic"),
+                     values = c("red", "blue")) +
+  theme_light()
+
+```
+
+
+
+In a separate Rmarkdown document work through a similar process with the NBA data. 
+
+You are a data focused scout for the worst team in the NBA, probably the Wizards. Your general manager just heard about Data Science and thinks it can solve all the teams problems!!! She wants you to figure out a way to find players that are high performing but maybe not highly paid that you can steal (offer contracts/trade) to get your team out of last place! 
+
+Details: 
+
+- Determine a way to use clustering to estimate based on performance if players are under or over paid, generally.  
+- Provide a well commented and clean (knitted) report of your findings that can be presented to your GM. Include a rationale for variable selection, details on your approach, a overview of the results with supporting visualizations and most importantly make recommendations on players she should consider pursuing. 
+
+Hints:
+
+- Salary(2020-21) is the variable you are trying to understand
+
+- You can include numerous performance variables in the clustering but when interpreting you might want to use graphs that include variables that are the most correlated with Salary, also might be a good way to select variables to include, but don't include salary in the cluster. 
+
+- You'll need to standardize the variables before performing the clustering
+  TO BETWEEN 0 - 1
+
+  MAYBE make size = to salary after clustering
+  
+- Remember interpretation/evaluation of the results is the most important part of every data science project. Your evaluation should be clearly linked to the question you are trying to answer and include a discussion on the risks associated with using your model and next steps. 
+
+build cluster with 10 or more variables, only use two variables when creating visualizations (ones that are closely correlated with salary)
+
+- The data you are getting will need to be merged, cleaned and prepared for analysis. Create a function called "nba_pre_processing" for these tasks. 
+
+- You'll likely be building one or a small number of central graphics that will guide much of your recommendations. Turn this graphic(s) into a function that takes inputs to help you present your recommendations.  
+  
+- Work together with your team members. 
+
+- Each group will present their recommendations in class, 5 minutes per group. Your results don't have to be identical, but you must agree on who will present (1 per group), we will continue to do this moving forward and the presenter must rotate each week. 
+
+
+

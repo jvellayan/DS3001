@@ -1,0 +1,163 @@
+---
+title: "NBA Lab"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r}
+library(e1071)
+library(tidyverse)
+library(plotly)
+```
+
+```{r}
+nba_stats <- read_csv("nba2020-21.csv")
+nba_stats
+```
+
+
+```{r}
+nba_sal <- read_csv("nba_salaries_21.csv")
+nba_sal
+```
+
+
+```{r}
+#nba_stats %>% distinct(Player, .keep_all = TRUE)
+```
+
+
+```{r}
+nba_pre_processing <- function(d1,d2){
+  d1<-na.omit(d1)
+  d2<-na.omit(d2)
+  d1<-d1 %>% distinct(Player, .keep_all = TRUE)
+  full_nba_data = left_join(d1,d2)
+  full_nba_data<-full_nba_data%>%distinct(Player,.keep_all = TRUE)%>%filter(MP>50)
+  full_nba_data<-na.omit(full_nba_data)
+  full_nba_data
+}
+
+full_nba_data <- nba_pre_processing(nba_stats,nba_sal)
+full_nba_data
+```
+
+# none : GS,FG, FGA, 3P,3PA,2P, 2PA, FT, FTA, PF, PTS,2020-21, player, DRB, POS
+
+```{r}
+#scales data to between 0 and 1
+scaler <- function(x){
+  (x-min(x))/(max(x)-min(x))
+}
+
+full_nba_data$Age<-scaler(full_nba_data$Age)
+full_nba_data$G<-scaler(full_nba_data$G)
+full_nba_data$MP<-scaler(full_nba_data$MP)
+full_nba_data$ORB<-scaler(full_nba_data$ORB)
+full_nba_data$TRB<-scaler(full_nba_data$TRB)
+full_nba_data$AST<-scaler(full_nba_data$AST)
+full_nba_data$BLK<-scaler(full_nba_data$BLK)
+full_nba_data$STL<-scaler(full_nba_data$STL)
+full_nba_data$TOV<-scaler(full_nba_data$TOV)
+
+
+full_nba_data
+
+
+```
+
+```{r}
+clust_data= full_nba_data[, c("Age", "G", "MP","FG%","3P%", "2P%", "eFG%", "FT%","ORB", "TRB", "AST", "STL", "BLK")]
+View(clust_data)
+```
+
+```{r}
+set.seed(1)
+kmeans_obj = kmeans(clust_data, centers = 2, 
+                        algorithm = "Lloyd") 
+```
+
+
+```{r}
+kmeans_obj
+```
+
+```{r}
+party_clusters = as.factor(kmeans_obj$cluster)
+```
+
+```{r}
+ploting_function<- function(var1,var2,data, cluster_shape){
+  ggplot(data, aes(x = var1, 
+                   y = var2,
+                  shape = cluster_shape)) + 
+  geom_point(size = 6) +
+  scale_shape_manual(name = "Cluster", 
+                     labels = c("Cluster 1", "Cluster 2"),
+                     values = c("1", "2")) +
+  theme_light()
+
+}
+
+```
+
+```{r}
+library(NbClust)
+
+# Run NbClust.
+nbclust_obj = NbClust(data = clust_data, method = "kmeans")
+
+# View the output of NbClust.
+nbclust_obj
+
+```
+
+
+```{r}
+#Minutes played and 
+ploting_function(full_nba_data$MP, full_nba_data$, full_nba_data, party_clusters)
+```
+
+
+```{r}
+ggplot(full_nba_data, aes(x = `eFG%`, 
+                            y = MP,
+                            shape = party_clusters)) + 
+  geom_point(size = 6) +
+  ggtitle("Aye vs. Nay votes for Democrat-introduced bills") +
+  xlab("Number of Aye Votes") +
+  ylab("Number of Nay Votes") +
+  scale_shape_manual(name = "Cluster", 
+                     labels = c("Cluster 1", "Cluster 2"),
+                     values = c("1", "2")) +
+  theme_light()
+
+```
+
+Details: 
+
+- Determine a way to use clustering to estimate based on performance if players are under or over paid, generally.  
+- Provide a well commented and clean (knitted) report of your findings that can be presented to your GM. Include a rationale for variable selection, details on your approach, a overview of the results with supporting visualizations and most importantly make recommendations on players she should consider pursuing. 
+
+Hints:
+
+- Salary(2020-21) is the variable you are trying to understand
+
+- You can include numerous performance variables in the clustering but when interpreting you might want to use graphs that include variables that are the most correlated with Salary, also might be a good way to select variables to include, but don't include salary in the cluster. 
+
+- You'll need to standardize the variables before performing the clustering
+  TO BETWEEN 0 - 1
+
+  MAYBE make size = to salary after clustering
+  
+- Remember interpretation/evaluation of the results is the most important part of every data science project. Your evaluation should be clearly linked to the question you are trying to answer and include a discussion on the risks associated with using your model and next steps. 
+
+build cluster with 10 or more variables, only use two variables when creating visualizations (ones that are closely correlated with salary)
+
+- The data you are getting will need to be merged, cleaned and prepared for analysis. Create a function called "nba_pre_processing" for these tasks. 
+
+- You'll likely be building one or a small number of central graphics that will guide much of your recommendations. Turn this graphic(s) into a function that takes inputs to help you present your recommendations.  
