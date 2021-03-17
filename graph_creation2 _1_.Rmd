@@ -1,0 +1,169 @@
+---
+title: "Graph Creation"
+author: "Jaya Vellayan"
+date: "3/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+```{r}
+library(plotly)
+library(DT)
+library(ggplot2)
+library(tidyverse)
+library(rio)
+
+
+```
+
+
+```{r}
+data <- read.csv("EconomistData.csv")
+data
+```
+
+#psuedocode
+1)create updated_regions column with actual names used in graphic
+2)plot x = CPI, y = HDI, color = updated_region with geom_point
+  - change fill of points to white, and make the outline thicker
+  - add axis names
+    -bold title
+    -italicize titles
+3)manually change the axis to match the graphic
+4)remove excess background lines on the graph
+6)add r^2 line using geosmooth
+  -manually add label for this, and change color to red
+7)use ggrepel to add country labels
+8)remove legend title
+
+
+
+
+```{r}
+
+region_lkup <- c(Americas="Americas", MENA="Middle East & North Africa", `EU W. Europe`="OECD", `East EU Cemt Asia`="Central & Eastern Europe", `Asia Pacific`="Asia and Oceania", SSA="Sub-Saharan")
+
+data$updated_regions <- as.character(region_lkup[data$Region])
+
+data
+
+```
+
+
+```{r}
+final_remake1 <- ggplot(data = data, 
+       mapping = aes(x = CPI,
+                    y = HDI
+                    )
+                ) +
+              geom_point(mapping = aes(color = updated_regions), size =3, fill="white", shape=1, stroke=2) 
+final_remake1
+
+```
+
+
+```{r}
+final_remake1 <- final_remake1 + labs(x = 'Corruption Perceptions Index, 2011 (10=least corrupt)',
+y = 'Human Development Index, 2011 (1=best)',
+title = 'Corruption and human development') + 
+theme(axis.title.x = element_text(size=8)) +
+theme(axis.title.y = element_text(size=8)) 
+
+
+final_remake1
+```
+```{r}
+final_remake1 <- final_remake1 + theme(plot.title = element_text(face="bold"))
+final_remake1
+```
+
+
+```{r}
+final_remake1 <- final_remake1 + scale_x_continuous(limits=c(1,10), n.breaks = 10) + scale_y_continuous(limits=c(0.2,1.0), n.breaks = 9) + theme_bw()
+final_remake1
+```
+
+```{r}
+final_remake1 <- final_remake1  + theme(panel.grid.major.x=element_blank(), 
+                     panel.grid.minor.x=element_blank(), panel.grid.minor.y =element_blank())
+
+final_remake1
+
+```
+
+
+
+```{r}
+final_remake1 <- final_remake1 + theme(axis.title.x=element_text(face="italic")) + theme(axis.title.y=element_text(face="italic")) + theme(plot.title = element_text(face="bold"))
+final_remake1
+```
+
+```{r}
+final_remake1 <- final_remake1 + theme(legend.position='top')
+final_remake1
+```
+
+
+```{r}
+final_remake1 <- final_remake1 + geom_smooth(method = "lm", formula = y ~ log(x), color = "red", se = FALSE, span=0.5)
+final_remake1
+```
+
+
+
+
+```{r}
+#install.packages("ggrepel")
+library(ggrepel)
+```
+
+```{r}
+library(ggrepel)
+final_remake1 <- final_remake1 + geom_text_repel(aes(label = Country), color = "black", data = subset(data, Country %in% c("Russia", "Venezuela", "Iraq", "Myanmar", "Sudan",
+                   "Afghanistan", "Congo", "Greece", "Argentina", "Brazil",
+                   "India", "Italy", "China", "South Africa", "Spane",
+                   "Botswana", "Cape Verde", "Bhutan", "Rwanda", "France",
+                   "United States", "Germany", "Britain", "Barbados", "Norway",
+                   "Japan", "New Zealand", "Singapore")),check_overlap = TRUE)
+
+final_remake1
+```
+
+
+
+
+
+```{r}
+
+final_remake1 <- final_remake1 + scale_color_manual(values=c("#33CCFF", "#00F7FF", "#0EAEAE", "#26649A", "#EC5A25", "#98413A"))
+
+final_remake1
+```
+
+
+```{r}
+w <-0.56
+final_remake1 <- final_remake1 + annotate(geom = 'text', 
+                                        x = 9, y = 0.25, 
+                                        label=glue::glue("R^2 == {l}",l=w),
+                                        size=4,
+                                        color='red',
+                                        parse=T)
+final_remake1
+```
+
+
+```{r}
+final_remake1 <- final_remake1 + theme(legend.title=element_blank())
+
+final_remake1
+```
+
+
+```{r}
+save.image(file ="final_remake1.RData")
+
+```
