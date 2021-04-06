@@ -1,0 +1,268 @@
+---
+title: "DS 3001: Naniar Package Exploration"
+author: "Group 5: Brittany Nguyen, Jaya Vellayan, Connor Nickol, and Ben Lenox"
+date: "4/4/2021"
+output:
+  html_document: 
+    toc: TRUE
+    theme: readable
+    toc_float: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Package Overview
+*  Naniar was created to work with missing data values. 
+*  Naniar is used for exploring, summarizing, visualizing, and manipulating missing data without large differences from a data set's corresponding ggplot data.
+* Data is becoming more and more relevant, but is often very hard to clean. We have learned in class that a large portion of any data science project is dedicated to data cleaning rather than machine learning.  Most data sets have at least some missing values, and naniar makes solving the problem of missing values a lot easier. It is a useful tool for all data scientists.
+
+
+### Version
+*  Naniar has many versions. It is currently running on version 0.6.0, which was published September 2nd, 2020.
+*  The main author of Naniar is Nicholas Tierney, who is also currently responsible for maintaining the package, but there were a few other people who assisted him.
+
+### Dependencies 
+*  Naniar requires R 3.1.2 or a newer version.
+*  Naniar is most commonly used with dplyr, ggplot2,tidyr, and visdat.
+*  Naniar is dependent on visdat for initial data screening.
+*  Naniar is dependent on ggplot2 to create plots. 
+*  Naniar is depent on UpSetR to create upset plots.
+
+# Examples of Usage
+We chose to look at the sleep data set found in the VIM package of R. It contains information about mammal sleeping patterns, and contains missing values.
+
+### Download Packages
+```{r, include=FALSE}
+# install.packages("ggplot2")
+# install.packages("dplyr")
+# install.packages("naniar")
+# install.packages("visdat")
+# install.packages("VIM")
+# install.packages("DT")
+```
+
+```{r, warning=FALSE, message=FALSE}
+library(naniar)
+library(ggplot2)
+library(visdat)
+library(dplyr)
+library(VIM)
+library(DT)
+```
+
+# Visualizing Missing Data {.tabset}
+
+## vis_dat
+vis_dat is a good first step because it visualizes the entire data frame, and provides information about the class of the data and missing values.
+```{r}
+#running vis_dat function on the sleep data set
+vis_dat(sleep)
+```
+
+## vis_miss
+The function vis_miss gives us a closer look at missing data in each column of the data.
+```{r}
+#running vis_miss function on the data; the dark bars show the missing data (accounts for 6.1% of the data).
+vis_miss(sleep)
+```
+
+# Shadow Matrix{.tabset}
+## as_shadow()
+Naniar provides a data structure for working with missing data that is called the "shadow matrix." A shadow matrix has the same dimensions as the normal data frame; however, a shadow matrix simply denotes NA for a missing value and !NA for a non-missing value.
+```{r}
+#running as_shadow function on the data to produce shadow matrix
+datatable(as_shadow(sleep))
+```
+
+## bind_shadow()
+Bind_shadow() adds the shadow matrix to the end of the original data frame to make it easier to keep track of missing values. Here we wrapped it in data table to make it easier to read.
+```{r}
+#adding the shadow matrix to the end of the data frame, which increases readability
+datatable(bind_shadow(sleep))
+```
+
+## nabular()
+Nabular() does the exact same thing as bind_shadow(), by appending the missing value columns to the end of the table.
+```{r}
+datatable(nabular(sleep))
+```
+
+## Uses
+Using the bind_shadow() format allows you to easily manage where missing values are in your data set and helps you to create insightful visualizations that display densities of the missing values.
+```{r, warning=FALSE}
+#piping the sleep data into bind_shadow, and making a visualization of missing values versus non-missing values at different values of the measured variable
+sleep %>%
+  bind_shadow() %>%
+  ggplot(aes(x =Sleep ,
+             fill = Dream_NA)) + 
+  geom_density(alpha = 0.5) + 
+  ggtitle("Sleep vs Dream_NA and Dream_!NA")
+```
+
+# Quick Data Summaries {.tabset}
+## n_miss()
+This function tells you the number of missing values. It can be called on the entire data set or on just a single column.
+```{r}
+#n_miss() called on entire data set
+n_miss(sleep)
+```
+
+```{r}
+#n_miss() called solely on the 'Dream' column
+n_miss(sleep$Dream)
+```
+
+## n_complete()
+This function tells you the number of complete values (non-missing). It can be called on the entire data set or on just a single column.
+```{r}
+#n_complete called on entire data set
+n_complete(sleep)
+```
+
+```{r}
+#n_complete called on single column
+n_complete(sleep$Dream)
+```
+
+## n_complete_row
+Similarly, n_complete_row() will return a vector with elements that compute how many complete values there are in each row of the data frame.
+```{r}
+n_complete_row(sleep)
+```
+
+## pct_miss()
+This function tells you the percentage of missing values. It can be called on the entire data set or on just a single column.
+```{r}
+#pct_miss called on entire data set
+pct_miss(sleep)
+```
+
+```{r}
+#pct_miss called on Dream column
+pct_miss(sleep$Dream)
+```
+
+## pct_complete()
+This function tells you the percentage of complete values. It can be called on the entire data set or on just a single column.
+```{r}
+#pct_complete() called on entire data set
+pct_complete(sleep)
+```
+
+```{r}
+#pct_complete() called on Dream column
+pct_complete(sleep$Dream)
+```
+
+## mis_var_summary()
+This function gives you a quick summary of what is missing and what is not for each variable in the data set.
+```{r}
+#miss_var_summary with input as the sleep dataset, and wrapped in datatable to present in a table format
+datatable(miss_var_summary(sleep))
+```
+The first column contains each of the data set sleep variables. The second column contains the number of missing values for each of those variables. The third column shows what percent of each of the columns is classified as missing values.
+
+## mis_case_summary()
+This function gives you a quick summary of the number of missing values in a given row and the percent missing in that row. Additionally, the number missing for each case is given, where the case is the row order for that variable.
+```{r}
+datatable(miss_case_summary(sleep))
+```
+
+## add_any_miss()
+The add_any_miss() function will append a column to the sleep data set that says whether missing values are present or not in the variables or columns. Extra arguments can be added to specify columns of interest to apply the function to, such as "starts_with" or "ends_with". 
+```{r}
+#the add_any_miss() function, wrapped inside datatable to display the data in a table format
+datatable(add_any_miss(
+  sleep,
+  label = "any_miss",
+  missing = "missing",
+  complete = "complete"
+))
+```
+
+## miss_var_table()
+The miss_var_table() function provides a tabular format to visualize the number of missing values (first column) possible for any variable, the number of variables that contain that number of missing values (second column), and the percent of the variable total these variables account for (third column).
+```{r}
+datatable(miss_var_table(sleep))
+```
+
+# Replacing Values with NA's {.tabset}
+While the Naniar package is useful for determining where missing values lie and for counting and visualizing them, it can also be used to replace values with NA's should they meet certain criteria.
+
+## replace_with_na_all()
+This function replaces all values in a dataframe with NA's, so long as they fit a specified condition. 
+```{r}
+#This code, for instance, replaces all instances of 6654 (body weight) with an NA value
+replace_with_na_all(sleep, condition = ~.x %in% c(6654.0, "N/A"))
+```
+
+# Naniar Plotting Functions  {.tabset}
+## geom_miss_point()
+Using ggplot2, usually we would do this with geom_point, but ggplot2 just drops all NA values, whereas with geom_miss_point() we get to visualize them. Geom_miss_point() uses gobbi and manet techniques that substitute “NA” values with values 10% lower than the minimum value of that variable, which is what we see below. Geom_miss_point() supports any of ggplot2's other standard features and can be utilized the exact same way as geom_point().
+```{r}
+ggplot(sleep, 
+       aes(x = Sleep, 
+           y = Dream)) + 
+  geom_miss_point() +
+  ggtitle("Sleep vs Dream with Missing Values")
+```
+Above is a visualization of the sleep and dream variables with missing and non-missing values plotted as different colors (orange indicating "missing" and blue indicating "non-missing").
+
+## gg_miss_upset()
+This function utilizes UpSetR's function upset and creates upset plots showing the number of missing values for each of the sets of data.
+```{r}
+#gg_miss_upset with the sleep data set fed in
+gg_miss_upset(sleep) 
+```
+The y-axis of the output indicates "intersection size", as the function plots the intersections of missing values between the variables and cases of the data set.
+
+## gg_miss_var()
+This function creates a ggplot based on the number of missing values for each variable, so we can see here half of the variables contain NAs and half don't. It works with any other ggplot function calls.
+```{r}
+gg_miss_var(sleep) + ggtitle("Missing Values Plot")
+```
+
+
+## gg_miss_case() 
+This function creates a ggplot of the number of missing cases per row, so we can see here that only the first 20 rows of the dataset contain missing values. It works with any other ggplot function calls.
+```{r}
+gg_miss_case(sleep) + ggtitle("Missing Cases Plot")
+```
+
+
+# Similar Packages {.tabset}
+## MICE Package
+A package that serves a similar function to Naniar that we found is one called MICE. While Naniar has a lot to do with identifying missing values in data, MICE is one way to specifically deal with those missing values. One of the main functions in the package (the mice function) works specifically to create replacement values for the missing values.
+
+## missForest Package 
+The missForest package is also similar to Naniar, but has a few key differences. Both packages were created for the overarching purpose of dealing with missing values, but they go about it in very different ways. missForest is used more for the computational side of missing values while Naniar is used more for visualization. missForest doesn't have the same graphing prowess as Naniar, but is able to predict how far off conclusions drawn from the imperfect data will be. Both packages are quite useful, but missForest seems to cover a much smaller area than Naniar.
+
+## Amelia Package 
+The Amelia package is also meant to deal with missing values, but it approaches it in a different way than Naniar. Naniar focuses a lot more on visualizations while Amelia makes a kind of prediction of the effect of the missing data and returns multiple new datasets. Amelia's datasets are meant to represent different ways the missing data could impact the dataset if it wasn't missing, and these datasets can be used to find an average expected impact of the missing data. Like missForest, Amelia fails to be able to visualize data in the way that Naniar can.
+
+## Streamlining in Naniar
+Our group also discussed how many of the functions in Naniar are streamlined processes for things that could be done using base R or Tidyverse. Naniar does a good job of making these processes a lot cleaner and simpler to both perform and understand. 
+
+An example of this could be using the Naniar functions such as n_complete and n_miss which are used to figure out how many NAs are present in a data set or a specific column. As shown earlier, it's very easy with Naniar to call n_miss(sleep$Dream) and have it output 12 as the number of NAs in the Dream column. The same thing can be achieved using base R and some Tidyverse functions such as something like sleep%>%count(is.na(Dream)). They both accomplish the same thing but the first not only has a cleaner output but also is a lot simpler to code. It can handle counting for the entire data set while something else would need to be written to do this as the second will not produce the desired output.
+
+# Reflection: Naniar's Computing and Visualization Strengths versus its Analysis Weaknesses
+Our survey of the Naniar package has left us with a good idea of its uses and overall helpfulness. To start, this package is extraordinarily effective at what it's designed to do. It effectively streamlines some aspects of data cleaning and missing data manipulation that would take far longer without the employment of the package. This package allows a data scientist to effectively visualize the missing data in a dataset, and its compatibility with ggplot makes it an extremely valuable tool. However, Naniar can only do so much in making conclusions about this missing data. 
+
+It's exceptional in identifying and visualizing missing data, but its ability to integrate this data is limited by the unknown nature of missing data. Granted, this package is better than anything else out there for drawing conclusions from incomplete data, but it's still lacking in how it integrates this missing data into graphs and datasets. For example, while trying to account for missing points in a graph, Naniar groups the missing points together below zero on both axes. We can't fault them too much for such a solution, as it is essentially impossible to come up with a perfect fix for imperfect data, but it would be helpful if they did a little more analysis as to where the missing data can be expected to be. 
+
+Giving a simple range of values that the missing data would likely fall into based on the rest of the dataset would be very helpful in drawing conclusions despite the missing data. Despite this, the Naniar package is still very well fleshed out and is an excellent tool for dealing with missing values, and is certainly the best thing for the job right now.
+
+# References 
+*  https://cran.r-project.org/web/packages/naniar/index.html
+*  https://naniar.njtierney.com/articles/getting-started-w-naniar.html#introduction
+*  http://naniar.njtierney.com/
+*  https://www.rdocumentation.org/packages/naniar/versions/0.6.0
+*  https://cran.r-project.org/web/packages/naniar/vignettes/getting-started-w-naniar.html
+*  https://cran.r-project.org/web/packages/Amelia/Amelia.pdf
+*  https://www.analyticsvidhya.com/blog/2016/03/tutorial-powerful-packages-imputing-missing-values/
+*  https://www.kdnuggets.com/2017/09/missing-data-imputation-using-r.html
+*  https://cran.r-project.org/web/packages/missForest/missForest.pdf 
